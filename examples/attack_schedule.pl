@@ -13,6 +13,8 @@ my $star;
 my $orbit;
 my $eta;
 
+our $LocalTZ = DateTime::TimeZone->new( name => 'local' )->name;
+
 GetOptions(
     'star=s'  => \$star,
     'orbit=s' => \$orbit,
@@ -93,7 +95,9 @@ for my $from_id (sort { $planets->{$a} cmp $planets->{$b} } keys %$planets) {
 	my @order = (@poo{qw(id name)}, $ship_id, $name, $type, $speed);
         my $d = DateTime::Duration->new(seconds => $secs);
 	my $launch = $t1->clone->subtract($d)->strftime('%F %T');
+	my $launch_local = $t1->clone->subtract($d)->set_time_zone($LocalTZ)->strftime('%F %T');
 
+	$launch = "$launch ($launch_local $LocalTZ)";
 	if ($secs < $tminus) { # if ship can arrive by eta add to a wave of attack
 	    $bol{$launch} ||= [];
 	    push @{$bol{$launch}}, [($ship->{type} eq 'scanner' ? '1' : '2'), @order];
@@ -102,7 +106,7 @@ for my $from_id (sort { $planets->{$a} cmp $planets->{$b} } keys %$planets) {
 }
 
 print "Launch Plan $target{name}:\n";
-for my $launch (keys %bol) {
+for my $launch (sort keys %bol) {
     print "\t$launch\n";
     for my $order (@{$bol{$launch}}) {
 	my ($wave, $planet_id, $planet_name, $ship_id, $ship_name, $ship_type, $ship_speed) = @$order;
