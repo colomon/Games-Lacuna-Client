@@ -87,7 +87,7 @@ for my $from_id (sort { $planets->{$a} cmp $planets->{$b} } keys %$planets) {
     for my $ship (sort { $a->{name} cmp $b->{name} } @$available) {
 	my ($ship_id, $name, $type, $speed) = @{$ship}{qw(id name type speed)};
 
-	my $secs = ($poo{d} / ($speed/100)) * 60 * 60; # duration in ms
+	my $secs = ($poo{d} / ($speed/100)) * 60 * 60; # duration in seconds
 	$secs -= 60  if $ship->{type} ne 'scanner'; # arrival 60 seconds after initial eta
 	
 	my @order = (@poo{qw(id name)}, $ship_id, $name, $type, $speed);
@@ -122,7 +122,7 @@ Usage: $0 attack_schedule.yml
 Lays out the attack times to the target planet.
 
 The eta is the time at which the 1st wave should arrive.
-eta must be provided in the following format: yyyy:MM:dd HH:mm::ss
+eta must be provided in the following format: yyyy:MM:dd:HH:mm::ss
 
 END_USAGE
 
