@@ -42,8 +42,8 @@ my $client = Games::Lacuna::Client->new(
 	# debug    => 1,
 );
 
-my @ores_to_look_for = ("anthracite", "zircon", "gold", 
-                        "magnetite", "halite", "goethite", 
+my @ores_to_look_for = ("anthracite", "zircon", "gold",
+                        "magnetite", "halite", "goethite",
                         "trona", "fluorite");
 
 # Load the planets
@@ -62,7 +62,7 @@ foreach my $name ( sort keys %planets ) {
     my $planet    = $client->body( id => $planets{$name} );
     my $result    = $planet->get_buildings;
     my $body      = $result->{status}->{body};
-    
+
     my $buildings = $result->{buildings};
 
     # Find the Archaeology Ministry
@@ -71,13 +71,13 @@ foreach my $name ( sort keys %planets ) {
     } keys %$buildings;
 
     next if not $arch_id;
-    
+
     my $arch   = $client->building( id => $arch_id, type => 'Archaeology' );
     if ($arch->view->{building}->{work}) {
         print "Ministry on $name is already working\n";
         next;
     }
-    
+
     my $ores = $arch->get_ores_available_for_processing;
     my @available_ores = keys %{$ores->{ore}};
     if (scalar @available_ores) {
