@@ -98,30 +98,8 @@ die "From colony '$from' not found"
 
 # Load planet data
 my $body         = $client->body( id => $from_id );
-my $waste_stored = $body->get_buildings->{"status"}->{"body"}->{"waste_stored"};
-my $waste_hour   = $body->get_buildings->{"status"}->{"body"}->{"waste_hour"};
-
-if ($waste_hour < 0) {
-    my $fudge = 12 * -$waste_hour;
-    say "waste per hour is negative ($waste_hour), adjusting waste stored down by $fudge";
-    $waste_stored -= $fudge;
-}
 my $result       = $body->get_buildings;
 my $buildings    = $result->{buildings};
-
-say "$waste_stored waste available";
-
-# Find the Subspace Transporter
-# my $transporter_id = first {
-#         $buildings->{$_}->{name} eq 'Subspace Transporter'
-# } keys %$buildings;
-# 
-# return if !$transporter_id;
-# 
-# my $transporter = $client->building( id => $transporter_id, type => 'Transporter' );
-# 
-# # Find waste trades
-# my @trades = get_trades();
 
 # Find the first Space Port
 my $space_port_id = first {
@@ -144,35 +122,25 @@ my %trade_withdrawn;
 #     say "reason: " . $ship->{reason}->[1];
 # }
 
-@$available = grep { $_->{type} eq "scow" } @$available;
+@$available = grep { $_->{type} eq "scanner" } @$available;
 
 for my $ship ( @$available ) {
     next if $speed && $speed != $ship->{speed};
-    if ($ship->{hold_size} < $waste_stored) {
-        $space_port->send_ship( $ship->{id}, { $target_type => $target_id } );
+    $space_port->send_ship( $ship->{id}, { $target_type => $target_id } );
 
-        printf "Sent %s to %s (%d waste)\n", $ship->{name}, $target_name, $ship->{hold_size};
-        $waste_stored -= $ship->{hold_size};
-        $sent++;
-        last if $max && $max == $sent;
-    } else {
-        printf "Not sending %s, holds %d waste but only %d availabe\n", 
-               $ship->{name}, $ship->{hold_size}, $waste_stored;
-    }
+    printf "Sent %s to %s\n", $ship->{name}, $target_name;
+    $sent++;
+    last if $max && $max == $sent;
 }
 
 sub usage {
   die <<"END_USAGE";
-Usage: $0 send_scows_storage.yml
+Usage: $0 send_scanners.yml
        --speed      SPEED
        --max        MAX
        --from       NAME  (required)
        --star       NAME
        --planet     NAME
-
-There must be at least as much waste already in storage as the largest
-hold-size of any scow being sent, as get_ships_for() will only return scows
-for which there is sufficient waste available.
 
 If --max is set, this is the maximum number of matching ships that will be
 sent. Default behaviour is to send all matching ships.
