@@ -23,6 +23,8 @@ GetOptions(
 );
 
 my (%recipes, @wishlist, %glyph, %plan, %ore);
+my $sleep;
+
 my $cfg_file = shift(@ARGV) || 'lacuna.yml';
 unless ( $cfg_file and -e $cfg_file ) {
 	die "Did not provide a config file";
@@ -66,6 +68,7 @@ recipes_get();
 wishlist_get();
 
 while (@wishlist) {
+    $sleep = 6 * 60 * 60; # default wait 6 hours (may be reduced during glyphs_get by minimum AM seconds_remaining)
     glyphs_get();
     plans_get();
     ores_get();
@@ -73,8 +76,9 @@ while (@wishlist) {
     if (!@wishlist) {@wishlist = (['Halls of Vrbansk',-1])}
 
     search();
-    print "\nsleeping for 6 hours...\n\n";
-    sleep 60 * 60 * 6 + 300; # 6 hours 5 minutes...
+    $sleep += 60; # give a minute extra to control for clock drift
+    print "\nsleeping for $sleep seconds...\n\n";
+    sleep $sleep;
 
     recipes_get();  # may be updated
     wishlist_get(); # may change...
@@ -85,6 +89,8 @@ while (@wishlist) {
 
 sub search {
     my %search;
+#    print "planet\n";
+#    print Dump(\%planet), "\n"; <STDIN>;
     my @planet_name = (grep {$planet{$_}{AM} and !$planet{$_}{searching} } keys %planet);
 
     if (!@planet_name) {
@@ -142,7 +148,7 @@ sub wishlist_completed {
 	    my $plan_count = $plan{$item};
 	    if (($count - $plan_count) <= 0) {
 		splice @wishlist, $i, 1; # remove item from wishlist if done
-	        print "have $plan_count of $item, only $count wanted... removing from wishlist.\n";
+	        print "have $plan_count of $item, only $count wanted... ignoring item on wishlist.\n";
 		$i--;
 		next;
 	    }
@@ -222,16 +228,22 @@ sub plans_get {
 sub glyphs_get {
     for my $name (keys %planet) {
 	my $ph = $planet{$name};
+#	print "glyphs_get: $name\n";
 	next unless $ph->{AM};
 	my $am = $client->building(id => $ph->{AM}, type => 'Archaeology');
 	my $glyphs = $am->get_glyphs()->{glyphs};
-	next unless @$glyphs;
 	$planet{$name}{glyphs} = [];
 	for my $glyph (@$glyphs) {
 	    push @{$planet{$name}{glyphs}}, $glyph->{type};
 	    $glyph{$glyph->{type}}++;
 	}
-	$ph->{searching} = $am->view()->{building}{work} ? 1 : 0;
+	my $building = $am->view()->{building};
+#	print Dump($building->{work}), "\n"; <STDIN>;
+	$ph->{searching} = $building->{work} ? 1 : 0;
+	if ($ph->{searching}) {
+	    my $seconds = $building->{work}{seconds_remaining};
+	    $sleep = $seconds  if $seconds < $sleep;
+	}
     }
 }
 
