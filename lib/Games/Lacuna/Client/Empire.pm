@@ -29,7 +29,7 @@ sub api_methods {
     ),
     found                 => { default_args => [qw(empire_id)] },
     update_species        => { default_args => [qw(empire_id)] },
-    redefine_species      => { default_args => [qw(empire_id)] },
+    redefine_species      => { default_args => [qw(session_id)] },
     invite_friend         => { default_args => [qw(session_id)] },
     change_password       => { default_args => [qw(session_id)] },
     logout                => { default_args => [qw(session_id)] },
