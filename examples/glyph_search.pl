@@ -172,7 +172,7 @@ sub wishlist_completed {
 		if (scalar @glyphs == $found) {
 #		    print "\@glyphs = ", join(', ', @glyphs), "\n";
 #		    print "found = $found\n";
-		    print "can do $item, desired count reduced to $wishlist[$i][1]...\n";
+		    print "have glyphs for $item, desired count reduced to $wishlist[$i][1]...\n";
 		    $glyph{$_}-- for @glyphs;  # reduce glyph count
 		    for my $key (keys %glyph) {
 			delete $glyph{$key}  if ! $glyph{$key}; # remove glyphs where none remain
