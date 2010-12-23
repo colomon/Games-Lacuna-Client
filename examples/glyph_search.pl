@@ -46,6 +46,14 @@ my $client = Games::Lacuna::Client->new(
 	# debug    => 1,
 );
 
+<<<<<<< HEAD
+=======
+my @ores_to_look_for = ("bauxite", "kerogen", "sulfur",
+                        "magnetite", "halite", "goethite",
+                        "trona", "zircon", "gold",
+                        "fluorite");
+
+>>>>>>> be6ab59244b87fb45a788df78ce9c482ab4a0cc7
 # Load the planets
 my $empire  = $client->empire->get_status->{empire};
 
@@ -186,6 +194,7 @@ sub wishlist_completed {
     }
 }
 
+<<<<<<< HEAD
 sub ores_get {
     for my $name (keys %planet) {
 	my $ph = $planet{$name};
@@ -198,6 +207,20 @@ sub ores_get {
 	    $ore{$key} ||= {};
 	    $ore{$key}{$name}++;
 	}
+=======
+    my $ores = $arch->get_ores_available_for_processing;
+    my @available_ores = keys %{$ores->{ore}};
+    if (scalar @available_ores) {
+        my $ore_to_try = $available_ores[0] // next;
+        foreach my $desired_ore (@ores_to_look_for) {
+            if ($ores->{ore}->{$desired_ore} && $ores->{ore}->{$desired_ore} > 10000) {
+                $ore_to_try = $desired_ore;
+                last;
+            }
+        }
+        print "Looking for $ore_to_try on $name\n";
+        $arch->search_for_glyph ($ore_to_try);
+>>>>>>> be6ab59244b87fb45a788df78ce9c482ab4a0cc7
     }
 }
 
