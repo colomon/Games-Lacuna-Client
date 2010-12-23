@@ -46,7 +46,13 @@ print "Are you absolutely sure you have the essentia and want to do this? (y/n) 
 my $in = <STDIN>;
 exit  unless $in =~ /^y/i;
 
-$client->empire->redefine_species($species);
+try {
+    $client->empire->redefine_species($species);
+}
+catch {
+    warn "caught error attempting: \$client->empire->redefine_species(\$species)\n$!";
+};
+
 
 
 
