@@ -69,6 +69,7 @@ wishlist_get();
 
 while (@wishlist) {
     $sleep = 6 * 60 * 60; # default wait 6 hours (may be reduced during glyphs_get by minimum AM seconds_remaining)
+    %glyph = %plan = ();
     glyphs_get();
     plans_get();
     ores_get();
