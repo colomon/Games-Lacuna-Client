@@ -42,9 +42,10 @@ my $client = Games::Lacuna::Client->new(
 	# debug    => 1,
 );
 
-my @ores_to_look_for = ("anthracite", "zircon", "gold",
+my @ores_to_look_for = ("bauxite", "kerogen", "sulfur",
                         "magnetite", "halite", "goethite",
-                        "trona", "fluorite");
+                        "trona", "zircon", "gold",
+                        "fluorite");
 
 # Load the planets
 my $empire  = $client->empire->get_status->{empire};
@@ -81,7 +82,7 @@ foreach my $name ( sort keys %planets ) {
     my $ores = $arch->get_ores_available_for_processing;
     my @available_ores = keys %{$ores->{ore}};
     if (scalar @available_ores) {
-        my $ore_to_try = $ores_to_look_for[0] // $available_ores[0] // next;
+        my $ore_to_try = $available_ores[0] // next;
         foreach my $desired_ore (@ores_to_look_for) {
             if ($ores->{ore}->{$desired_ore} && $ores->{ore}->{$desired_ore} > 10000) {
                 $ore_to_try = $desired_ore;
