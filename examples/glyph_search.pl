@@ -198,9 +198,11 @@ sub ores_get {
 	my $ph = $planet{$name};
 	next unless $ph->{AM};
 	my $ore = $client->building(id=>$ph->{AM}, type=>'Archaeology')->get_ores_available_for_processing()->{ore};
+#	print "ore:\n", Dump($ore), "\n"; <STDIN>;
 	next unless keys %$ore;
 	$planet{$name}{ore} = [];
 	for my $key (keys %$ore) {
+	    next if $ore->{$key} <= 10000; # suspect off by one error where 10000 is rejected.
 	    push @{$planet{$name}{ore}}, $key;
 	    $ore{$key} ||= {};
 	    $ore{$key}{$name}++;
