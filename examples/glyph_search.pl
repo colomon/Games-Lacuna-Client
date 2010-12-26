@@ -69,7 +69,6 @@ wishlist_get();
 
 while (@wishlist) {
     $sleep = 6 * 60 * 60; # default wait 6 hours (may be reduced during glyphs_get by minimum AM seconds_remaining)
-    %glyph = %plan = ();
     glyphs_get();
     plans_get();
     ores_get();
@@ -116,7 +115,7 @@ sub search {
 		    my $planet_name = $planet_name[$i];
 		    my $ph = $planet{$planet_name};
 		    if (exists $ore{$ore_name}{$planet_name}) {
-			print "\t$planet_name searching for $ore_name\n";
+			print "\t$planet_name has $ph->{ore}{$ore_name} $ore_name. Searching...\n";
 			$client->building(id=>$ph->{AM}, type=>'Archaeology')->search_for_glyph($ore_name);
 			$ph->{searching} = 1;
 			splice @planet_name, $i, 1;
@@ -131,10 +130,18 @@ sub search {
     if (@planet_name) {
 	for my $planet_name (@planet_name) {
 	    my $ph = $planet{$planet_name};
-	    my $ore_name = $ph->{ore}[0];
-	    print "\t$planet_name has no useful ores available... searching for $ore_name...\n";
-#	    $client->building(id=>$ph->{AM}, type=>'Archaeology')->search_for_glyph($ore_name);
-	    $ph->{searching} = 1;
+	    my $ore_name;
+	    if (keys %{$ph->{ore}}) {
+		$ore_name = [keys %{$ph->{ore}}]->[0];
+	    }
+	    if ($ore_name) {
+		print "\t$planet_name has no ore for the wanted plans.\n\tSearching $ph->{ore}{$ore_name} $ore_name for glyph...\n";
+		$client->building(id=>$ph->{AM}, type=>'Archaeology')->search_for_glyph($ore_name);
+		$ph->{searching} = 1;
+	    }
+	    else {
+		print "\t$planet_name does not have enough of any ore to search\n";
+	    }
 	}
     }
 }
@@ -169,15 +176,13 @@ sub wishlist_completed {
 		my (@glyphs) = @{$recipes[$j]};
 	        my $found=0;
 		for (@glyphs) { $found++  if exists $glyph{$_}; }
-		if (scalar @glyphs == $found) {
-#		    print "\@glyphs = ", join(', ', @glyphs), "\n";
-#		    print "found = $found\n";
-		    print "have glyphs for $item, desired count reduced to $wishlist[$i][1]...\n";
-		    $glyph{$_}-- for @glyphs;  # reduce glyph count
+		if (scalar @glyphs == $found) { # if all need glyphs are found
+		    $wishlist[$i][1]--;         # remove if it can be built from glyphs
+		    print "have glyphs for $item, wanted count reduced to $wishlist[$i][1]...\n";
+		    $glyph{$_}-- for @glyphs;   # reduce glyph count
 		    for my $key (keys %glyph) {
 			delete $glyph{$key}  if ! $glyph{$key}; # remove glyphs where none remain
 		    };
-		    $wishlist[$i][1]--;  # remove if it can be built from glyphs
 		    if ($wishlist[$i][1] <= 0) {
 			splice @wishlist, $i, 1;
 			$i--;
@@ -194,16 +199,17 @@ sub wishlist_completed {
 }
 
 sub ores_get {
+    %ore = ();
     for my $name (keys %planet) {
 	my $ph = $planet{$name};
+	$ph->{ore} = {};
 	next unless $ph->{AM};
 	my $ore = $client->building(id=>$ph->{AM}, type=>'Archaeology')->get_ores_available_for_processing()->{ore};
 #	print "ore:\n", Dump($ore), "\n"; <STDIN>;
 	next unless keys %$ore;
-	$planet{$name}{ore} = [];
 	for my $key (keys %$ore) {
-	    next if $ore->{$key} <= 10000; # suspect off by one error where 10000 is rejected.
-	    push @{$planet{$name}{ore}}, $key;
+	    next if $ore->{$key} < 10000; # suspect off by one error where 10000 is rejected.
+	    $ph->{ore}{$key} = $ore->{$key};
 	    $ore{$key} ||= {};
 	    $ore{$key}{$name}++;
 	}
@@ -211,34 +217,37 @@ sub ores_get {
 }
 
 sub plans_get {
+    %plan = ();
     for my $name (keys %planet) {
 	my $ph = $planet{$name};
+	$ph->{plans} = {};
 	my $plans = $client->building(id => $ph->{PCC}, type => 'PlanetaryCommand')->view_plans()->{plans};
 	next unless @$plans;
 	my $plan_count = scalar @$plans;
 	if ($plan_count > 18) {
 	    warn "planet $name has $plan_count plans. After 20, the oldest plan will be deleted!!!\n";
 	}
-	$planet{$name}{plans} = [];
 	for my $plan (@$plans) {
 	    my $plan_name = $plan->{name};
-	    push @{$planet{$name}{plans}}, $plan_name;
+	    $ph->{plans}{$plan_name}++;
 	    $plan{$plan_name}++;
 	}
     }
 }
 
 sub glyphs_get {
+    %glyph = ();
     for my $name (keys %planet) {
 	my $ph = $planet{$name};
+	$ph->{glyphs} = {};
 #	print "glyphs_get: $name\n";
 	next unless $ph->{AM};
 	my $am = $client->building(id => $ph->{AM}, type => 'Archaeology');
 	my $glyphs = $am->get_glyphs()->{glyphs};
-	$planet{$name}{glyphs} = [];
 	for my $glyph (@$glyphs) {
-	    push @{$planet{$name}{glyphs}}, $glyph->{type};
-	    $glyph{$glyph->{type}}++;
+	    my $glyph_name = $glyph->{type};
+	    $ph->{glyphs}{$glyph_name}++;
+	    $glyph{$glyph_name}++;
 	}
 	my $building = $am->view()->{building};
 #	print Dump($building->{work}), "\n"; <STDIN>;
