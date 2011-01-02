@@ -29,8 +29,8 @@ my $cfg_file = shift(@ARGV) || 'lacuna.yml';
 unless ( $cfg_file and -e $cfg_file ) {
 	die "Did not provide a config file";
 }
-my $glyph_recipes_file = shift(@ARGV) || 'glyph_recipes.yml';
 my $plans_wanted_file  = shift(@ARGV) || 'plans_wanted.yml';
+my $glyph_recipes_file = shift(@ARGV) || 'glyph_recipes.yml';
 
 
 if( $opt_update_yml ){
@@ -103,6 +103,10 @@ sub search {
 	my $item = $wish->[0];
 	print "Can we look for any ingredients for a $item?\n";
 	my (@recipes) = @{$recipes{$item}};
+	if (scalar @recipes > 1) { # if multiple recipies, look for one requiring fewest glyphs
+	    @recipes = sort { grep({exists $glyph{$_}} @$b) <=> grep({exists $glyph{$_}} @$a) } 
+			     @recipes;
+	}
 	# try to complete any recipe for that wish
 	INNER: for my $recipe (@recipes) {
 	    my %need;
