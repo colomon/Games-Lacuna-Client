@@ -134,7 +134,7 @@ for my $launch (sort keys %bol) {
 if ($outfile) {
     open my $out, '>', $outfile or die $1;
     my $plan = { target => \%target,
-                 eta    => $t1->strftime('%F %T') . ' UTC',
+                 eta    => $t1->set_time_zone('UTC')->strftime('%F %T') . ' UTC',
                  armada => \%bol };
     print $out Dump($plan);
 }
