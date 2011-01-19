@@ -12,13 +12,15 @@ use YAML::Any             (qw(Dump));
 my $star;
 my $orbit;
 my $eta;
+my $outfile;
 
 our $LocalTZ = DateTime::TimeZone->new( name => 'local' )->name;
 
 GetOptions(
-    'star=s'  => \$star,
-    'orbit=s' => \$orbit,
-    'eta=s'   => \$eta,
+    'star=s'    => \$star,
+    'orbit=s'   => \$orbit,
+    'eta=s'     => \$eta,
+    'outfile=s' => \$outfile,
 );
 
 usage() if !$star || !$orbit || !$eta;
@@ -41,8 +43,8 @@ unless ( $cfg_file and -e $cfg_file ) {
 }
 
 my $client = Games::Lacuna::Client->new(
-	cfg_file => $cfg_file,
-	 #debug    => 1,
+        cfg_file => $cfg_file,
+         #debug    => 1,
 );
 
 my $empire  = $client->empire->get_status->{empire};
@@ -80,38 +82,61 @@ for my $from_id (sort { $planets->{$a} cmp $planets->{$b} } keys %$planets) {
             $buildings->{$_}->{name} eq 'Space Port'
     } keys %$buildings;
     my $space_port = $client->building( id => $space_port_id, type => 'SpacePort' );
-    
+
     # get the ships we can send from that spaceport to our target
     my $ships = $space_port->get_ships_for( $from_id, { body_id => $target{id} } );
     my $available = $ships->{available};
 
-    # Scanners go into Wave 1, everything else into Wave 2
+    # Scanners and Sweepers go into Wave 1, everything else into Wave 2
     for my $ship (sort { $a->{name} cmp $b->{name} } @$available) {
-	my ($ship_id, $name, $type, $speed) = @{$ship}{qw(id name type speed)};
+        my ($ship_id, $name, $type, $speed) = @{$ship}{qw(id name type speed)};
 
-	my $secs = ($poo{d} / ($speed/100)) * 60 * 60; # duration in seconds
-	$secs -= 60  if $ship->{type} ne 'scanner'; # arrival 60 seconds after initial eta
-	
-	my @order = (@poo{qw(id name)}, $ship_id, $name, $type, $speed);
+        my $secs = ($poo{d} / ($speed/100)) * 60 * 60; # duration in seconds
+        my $wave=1;
+        given ($ship->{type}) {
+            when ('scanner') {
+                # first wave
+            }
+            when ('sweeper') {
+                # first wave trailing scanners
+
+                $secs -= 20;
+            }
+            default {
+                $secs -= 60;
+                $wave=2;
+            }
+        }
+
+        my %order;
+        @order{qw(planet_id planet_name ship_id ship_name ship_type ship_speed)} = (@poo{qw(id name)}, $ship_id, $name, $type, $speed);
         my $d = DateTime::Duration->new(seconds => $secs);
-	my $launch = $t1->clone->subtract($d)->strftime('%F %T');
-	my $launch_local = $t1->clone->subtract($d)->set_time_zone($LocalTZ)->strftime('%F %T');
+        my $launch = $t1->clone->subtract($d)->strftime('%F %T');
+        my $launch_local = $t1->clone->subtract($d)->set_time_zone($LocalTZ)->strftime('%F %T');
 
-	$launch = "$launch ($launch_local $LocalTZ)";
-	if ($secs < $tminus) { # if ship can arrive by eta add to a wave of attack
-	    $bol{$launch} ||= [];
-	    push @{$bol{$launch}}, [($ship->{type} eq 'scanner' ? '1' : '2'), @order];
-	}
+        $launch = "$launch ($launch_local $LocalTZ)";
+        if ($secs < $tminus) { # if ship can arrive by eta add to a wave of attack
+            $bol{$launch} ||= [];
+            $order{wave}=$wave;
+            push @{$bol{$launch}}, \%order;
+        }
     }
 }
 
 print "Launch Plan $target{name}:\n";
 for my $launch (sort keys %bol) {
     print "\t$launch\n";
-    for my $order (@{$bol{$launch}}) {
-	my ($wave, $planet_id, $planet_name, $ship_id, $ship_name, $ship_type, $ship_speed) = @$order;
-	print "\t\t$planet_name, $ship_name, $ship_type, $ship_speed, wave $wave\n";
+    for my $o (@{$bol{$launch}}) {
+        print "\t\t$o->{planet_name}, $o->{ship_name}, $o->{ship_type}, $o->{ship_speed}, wave $o->{wave}\n";
     }
+}
+
+if ($outfile) {
+    open my $out, '>', $outfile or die $1;
+    my $plan = { target => \%target,
+                 eta    => $t1->strftime('%F %T') . ' UTC',
+                 armada => \%bol };
+    print $out Dump($plan);
 }
 
 
@@ -122,11 +147,16 @@ Usage: $0 attack_schedule.yml
        --star       NAME   (required)
        --orbit      NUMBER (required)
        --eta        TIME   (required)
+       --outfile    FILENAME (optional)
 
 Lays out the attack times to the target planet.
 
 The eta is the time at which the 1st wave should arrive.
 eta must be provided in the following format: yyyy:MM:dd:HH:mm::ss
+Timezone is assumed to be UTC.
+
+If --outfile is provided, it will create a YAML file which can be
+edited and used as input to a launch script.
 
 END_USAGE
 
