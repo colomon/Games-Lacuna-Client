@@ -30,8 +30,10 @@ my $planets = $empire->{planets};
 
 my $available = 'Docks Available';
 
+my $total = {};
+
 # Scan each planet
-foreach my $planet_id ( sort keys %$planets ) {
+foreach my $planet_id ( sort { $planets->{$a} cmp $planets->{$b} } keys %$planets ) {
     my $name = $planets->{$planet_id};
 
     next if defined $planet_name && $planet_name ne $name;
@@ -68,14 +70,38 @@ foreach my $planet_id ( sort keys %$planets ) {
         printf "%${max_length}s: %d\n",
             _prettify_name( $type ),
             $ships->{$type};
+        $total->{$type} += $ships->{$type};
     }
     
     printf "%${max_length}s: %d\n",
         $available,
         $space_port->{docks_available};
+    $total->{$available} += $space_port->{docks_available};
     
     print "\n";
 }
+
+print "Totals\n";
+print "======\n";
+my $max_length = max( map { length _prettify_name($_) } keys %$total )
+               || 0;
+
+$max_length = length($available) > $max_length ? length $available
+            :                                    $max_length;
+
+for my $type ( sort keys %$total ) {
+    printf "%${max_length}s: %d\n",
+        _prettify_name( $type ),
+        $total->{$type};
+}
+
+printf "%${max_length}s: %d\n",
+    $available,
+    $total->{$available};
+
+print "\n";
+
+
 
 sub _prettify_name {
     my $name = shift;
